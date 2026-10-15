@@ -96,27 +96,28 @@
   }
 
   /* iPhone / touch shell. The PDF + line/word detection engine below is unchanged. */
-  .mobileTopActions,.mobileDock,.mobileScrim{display:none}
+  .mobileTopActions,.mobileDock,.mobileScrim,.mobileSheetClose{display:none}
   @supports(height:100dvh){.app{height:100dvh}}
   @media(max-width:720px){
     html,body{width:100%;height:100%;overscroll-behavior:none;background:#000}
     body{-webkit-text-size-adjust:100%;touch-action:manipulation}
     .app{height:100dvh;min-height:100dvh;grid-template-rows:auto 1fr}
-    header{height:auto;min-height:calc(54px + env(safe-area-inset-top));padding:calc(7px + env(safe-area-inset-top)) 10px 7px;gap:8px;justify-content:space-between}
+    header{height:auto;min-height:calc(54px + env(safe-area-inset-top));padding:calc(7px + env(safe-area-inset-top)) 10px 7px;gap:8px;justify-content:space-between;z-index:90;backdrop-filter:none;-webkit-backdrop-filter:none}
     .brand{min-width:0;font-size:14px;gap:8px;white-space:nowrap}.bookdot{width:10px;height:16px}
     .status{display:none}
     .mobileTopActions{display:flex;gap:7px;margin-left:auto}
     .mobileTopActions button{min-height:38px;padding:7px 11px;font-size:13px;font-weight:750}
-    .toolbar{display:none;position:fixed;left:10px;right:10px;bottom:calc(82px + env(safe-area-inset-bottom));z-index:70;max-height:min(62dvh,560px);overflow:auto;-webkit-overflow-scrolling:touch;background:rgba(12,12,12,.985);border:1px solid #303030;border-radius:18px;padding:12px;box-shadow:0 20px 60px rgba(0,0,0,.7);grid-template-columns:1fr 1fr;gap:9px}
-    .toolbar.mobileOpen{display:grid}
+    .toolbar{display:none;position:fixed;left:10px;right:10px;bottom:calc(82px + env(safe-area-inset-bottom));z-index:120;max-height:min(62dvh,560px);overflow:auto;-webkit-overflow-scrolling:touch;background:rgba(12,12,12,.995);border:1px solid #3a3a3a;border-radius:18px;padding:12px;box-shadow:0 20px 60px rgba(0,0,0,.78);grid-template-columns:1fr 1fr;gap:9px;visibility:hidden;opacity:0;pointer-events:none}
+    .toolbar.mobileOpen{display:grid;visibility:visible;opacity:1;pointer-events:auto}
     .toolbar>*{min-width:0}
     .toolbar button,.toolbar .filelabel,.toolbar .group{width:100%;min-height:46px}
     .toolbar .filelabel,.toolbar button{display:flex;align-items:center;justify-content:center;font-weight:720}
     .toolbar .group{justify-content:space-between;padding:6px 9px}
+    .mobileSheetClose{display:flex!important;grid-column:1/-1;align-items:center;justify-content:center;min-height:42px!important;background:#f4f4f4!important;color:#111!important;border-color:#f4f4f4!important;font-weight:850!important}
     .toolbar .group label{font-size:10px}
     .toolbar select,.toolbar input[type=number]{min-width:0;max-width:58%;font-size:16px}
     .toolbar #prevBtn,.toolbar #nextBtn{display:none}
-    .mobileScrim{position:fixed;inset:0;z-index:65;background:rgba(0,0,0,.44);backdrop-filter:blur(2px)}
+    .mobileScrim{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.44);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
     .mobileScrim.on{display:block}
     main{min-height:0}
     .normalWrap{padding:14px 12px calc(112px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
@@ -144,7 +145,7 @@
     .hint{display:none}
     .loading{padding:30px;text-align:center;font-size:14px}
     .error{left:12px;right:12px;top:50%;transform:translateY(-50%);max-width:none;padding:16px}
-    .mobileDock{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:7px;position:fixed;left:8px;right:8px;bottom:calc(7px + env(safe-area-inset-bottom));z-index:60;padding:7px;background:rgba(12,12,12,.94);border:1px solid #292929;border-radius:17px;box-shadow:0 12px 36px rgba(0,0,0,.55);backdrop-filter:blur(14px)}
+    .mobileDock{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:7px;position:fixed;left:8px;right:8px;bottom:calc(7px + env(safe-area-inset-bottom));z-index:70;padding:7px;background:rgba(12,12,12,.94);border:1px solid #292929;border-radius:17px;box-shadow:0 12px 36px rgba(0,0,0,.55);backdrop-filter:blur(14px)}
     .mobileDock button{min-height:52px;padding:6px 4px;border-radius:12px;font-size:12px;font-weight:800;line-height:1.05}
     .mobileDock button .mi{display:block;font-size:21px;line-height:1.15;margin-bottom:2px}
     .mobileDock button.active{background:var(--accent);border-color:var(--accent)}
@@ -176,6 +177,7 @@
     <button id="mobileControlsBtn" type="button">Controls</button>
   </div>
   <div class="toolbar">
+    <button id="mobileCloseSheetBtn" class="mobileSheetClose" type="button">Done</button>
     <label class="filelabel" title="Open any PDF">Open PDF<input id="fileInput" type="file" accept="application/pdf,.pdf"></label>
     <button id="focusBtn" class="primary" title="Toggle focus reading mode (F)">Focus: OFF</button>
     <div class="group"><label>Unit</label><select id="unitMode"><option value="line">Line</option><option value="paragraph">Paragraph</option></select></div>
@@ -228,7 +230,7 @@ const el = {
   readout:$('readout'), loading:$('loading'), error:$('error'), errorText:$('errorText')
 };
 const mob = {
-  open:$('mobileOpenBtn'), controls:$('mobileControlsBtn'), scrim:$('mobileScrim'),
+  open:$('mobileOpenBtn'), controls:$('mobileControlsBtn'), scrim:$('mobileScrim'), close:$('mobileCloseSheetBtn'),
   prev:$('mobilePrevBtn'), auto:$('mobileAutoBtn'), next:$('mobileNextBtn'), focus:$('mobileFocusBtn')
 };
 const isPhoneUI=()=>window.matchMedia && window.matchMedia('(max-width:720px)').matches;
@@ -805,10 +807,12 @@ el.unitMode.addEventListener('change',()=>{safeStore('fr.unit',el.unitMode.value
 mob.open?.addEventListener('click',()=>el.fileInput.click());
 mob.controls?.addEventListener('click',()=>setMobileSheet(!document.querySelector('.toolbar')?.classList.contains('mobileOpen')));
 mob.scrim?.addEventListener('click',()=>setMobileSheet(false));
+mob.close?.addEventListener('click',()=>setMobileSheet(false));
 mob.prev?.addEventListener('click',()=>step(-1));
 mob.next?.addEventListener('click',()=>step(1));
 mob.auto?.addEventListener('click',()=>el.autoBtn.click());
 mob.focus?.addEventListener('click',()=>el.focusBtn.click());
+window.addEventListener('resize',()=>{if(!isPhoneUI())setMobileSheet(false);},{passive:true});
 
 // Restore durable reader preferences. Fail silently in restricted/local WebViews.
 {
