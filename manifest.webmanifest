@@ -1,0 +1,11 @@
+{
+  "name": "Focus Book Reader",
+  "short_name": "Focus Reader",
+  "description": "A mobile PDF focus reader with line isolation, word outlining, automatic pacing, and thought-flow continuity.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#000000",
+  "theme_color": "#000000"
+}
