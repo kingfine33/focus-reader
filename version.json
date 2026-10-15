@@ -1,5 +1,5 @@
 {
-  "version": "2026.10.15.1",
-  "released_at": "2026-10-15T22:23:00Z",
-  "notes": "Adds automatic cache-busting update checks for GitHub Pages and iPhone Safari/Home Screen."
+  "version": "2026.10.15.2",
+  "released_at": "2026-10-15T22:55:00Z",
+  "notes": "Mobile compatibility pass: landscape phone mode, safe areas, larger touch targets, full-width page view, reachable moving-line start, lower memory rendering, and launcher cache refresh."
 }

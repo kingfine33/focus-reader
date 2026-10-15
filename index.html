@@ -12,17 +12,17 @@
 <style>
   *{box-sizing:border-box}
   html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-  #readerFrame{position:fixed;inset:0;width:100%;height:100%;border:0;background:#000;display:block}
+  #readerFrame{position:fixed;inset:0;width:100%;height:100dvh;border:0;background:#000;display:block}
   #boot{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:#000;color:#f4f4f4;font-weight:750;letter-spacing:.01em;transition:opacity .18s ease}
   #boot.hide{opacity:0;pointer-events:none}
   #updateBanner{position:fixed;z-index:50;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%);display:none;align-items:center;gap:10px;max-width:calc(100vw - 24px);padding:9px 10px 9px 13px;border:1px solid #444;border-radius:14px;background:rgba(16,16,16,.97);color:#f4f4f4;box-shadow:0 12px 32px rgba(0,0,0,.55);font-size:13px}
   #updateBanner.show{display:flex}
-  #updateBanner button{border:0;border-radius:9px;padding:8px 11px;background:#f4f4f4;color:#111;font:inherit;font-weight:800}
+  #updateBanner button{min-height:44px;border:0;border-radius:9px;padding:8px 11px;background:#f4f4f4;color:#111;font:inherit;font-weight:800}
   #updateBanner .dismiss{background:#242424;color:#ddd}
 </style>
 </head>
 <body>
-<iframe id="readerFrame" title="Focus Reader"></iframe>
+<iframe id="readerFrame" title="Focus Reader" allow="screen-wake-lock"></iframe>
 <div id="boot">Loading Focus Reader…</div>
 <div id="updateBanner"><span id="updateText">Update available</span><button id="applyUpdate">Update</button><button id="dismissUpdate" class="dismiss">Later</button></div>
 <script>
@@ -60,11 +60,12 @@
   function applyUpdate(meta=pendingMeta){
     if(!meta||!meta.version)return;
     hideBanner();
-    currentVersion=String(meta.version);
-    window.FOCUS_READER_VERSION=currentVersion;
-    bootEl.textContent='Updating Focus Reader…';
-    bootEl.classList.remove('hide');
-    frame.src=versionedReaderUrl(currentVersion)+'&refresh='+Date.now();
+    const next=String(meta.version);
+    // Reload the launcher itself with a versioned URL so Safari/Home Screen cannot keep an old shell.
+    const u=new URL(location.href);
+    u.searchParams.set('v',next);
+    u.searchParams.set('refresh',Date.now());
+    location.replace(u.href);
   }
 
   async function checkForUpdate(manual=false){

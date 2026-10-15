@@ -98,31 +98,31 @@
   /* iPhone / touch shell. The PDF + line/word detection engine below is unchanged. */
   .mobileTopActions,.mobileDock,.mobileScrim,.mobileSheetClose{display:none}
   @supports(height:100dvh){.app{height:100dvh}}
-  @media(max-width:720px){
+  @media(max-width:720px), (max-height:500px) and (pointer:coarse){
     html,body{width:100%;height:100%;overscroll-behavior:none;background:#000}
     body{-webkit-text-size-adjust:100%;touch-action:manipulation}
     .app{height:100dvh;min-height:100dvh;grid-template-rows:auto 1fr}
-    header{height:auto;min-height:calc(54px + env(safe-area-inset-top));padding:calc(7px + env(safe-area-inset-top)) 10px 7px;gap:8px;justify-content:space-between;z-index:90;backdrop-filter:none;-webkit-backdrop-filter:none}
+    header{height:auto;min-height:calc(54px + env(safe-area-inset-top));padding-top:calc(7px + env(safe-area-inset-top));padding-bottom:7px;padding-left:calc(10px + env(safe-area-inset-left));padding-right:calc(10px + env(safe-area-inset-right));gap:8px;justify-content:space-between;z-index:90;backdrop-filter:none;-webkit-backdrop-filter:none}
     .brand{min-width:0;font-size:14px;gap:8px;white-space:nowrap}.bookdot{width:10px;height:16px}
     .status{display:none}
     .mobileTopActions{display:flex;gap:7px;margin-left:auto}
-    .mobileTopActions button{min-height:38px;padding:7px 11px;font-size:13px;font-weight:750}
-    .toolbar{display:none;position:fixed;left:10px;right:10px;bottom:calc(82px + env(safe-area-inset-bottom));z-index:120;max-height:min(62dvh,560px);overflow:auto;-webkit-overflow-scrolling:touch;background:rgba(12,12,12,.995);border:1px solid #3a3a3a;border-radius:18px;padding:12px;box-shadow:0 20px 60px rgba(0,0,0,.78);grid-template-columns:1fr 1fr;gap:9px;visibility:hidden;opacity:0;pointer-events:none}
+    .mobileTopActions button{min-height:44px;padding:7px 11px;font-size:13px;font-weight:750}
+    .toolbar{display:none;position:fixed;left:calc(10px + env(safe-area-inset-left));right:calc(10px + env(safe-area-inset-right));bottom:calc(82px + env(safe-area-inset-bottom));z-index:120;max-height:min(62dvh,560px);overflow:auto;-webkit-overflow-scrolling:touch;background:rgba(12,12,12,.995);border:1px solid #3a3a3a;border-radius:18px;padding:12px;box-shadow:0 20px 60px rgba(0,0,0,.78);grid-template-columns:1fr 1fr;gap:9px;visibility:hidden;opacity:0;pointer-events:none}
     .toolbar.mobileOpen{display:grid;visibility:visible;opacity:1;pointer-events:auto}
     .toolbar>*{min-width:0}
     .toolbar button,.toolbar .filelabel,.toolbar .group{width:100%;min-height:46px}
     .toolbar .filelabel,.toolbar button{display:flex;align-items:center;justify-content:center;font-weight:720}
     .toolbar .group{justify-content:space-between;padding:6px 9px}
-    .mobileSheetClose{display:flex!important;grid-column:1/-1;align-items:center;justify-content:center;min-height:42px!important;background:#f4f4f4!important;color:#111!important;border-color:#f4f4f4!important;font-weight:850!important}
+    .mobileSheetClose{display:flex!important;grid-column:1/-1;align-items:center;justify-content:center;min-height:44px!important;background:#f4f4f4!important;color:#111!important;border-color:#f4f4f4!important;font-weight:850!important}
     .toolbar .group label{font-size:10px}
     .toolbar select,.toolbar input[type=number]{min-width:0;max-width:58%;font-size:16px}
     .toolbar #prevBtn,.toolbar #nextBtn{display:none}
     .mobileScrim{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.44);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
     .mobileScrim.on{display:block}
     main{min-height:0}
-    .normalWrap{padding:14px 12px calc(112px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+    .normalWrap{padding-top:14px;padding-bottom:calc(112px + env(safe-area-inset-bottom));padding-left:calc(12px + env(safe-area-inset-left));padding-right:calc(12px + env(safe-area-inset-right));-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
     #normalCanvas{max-width:100%;box-shadow:none}
-    .focusWrap{padding:8px 33px calc(116px + env(safe-area-inset-bottom)) 10px;touch-action:pan-y;overscroll-behavior:none}
+    .focusWrap{padding-top:8px;padding-bottom:calc(116px + env(safe-area-inset-bottom));padding-left:calc(10px + env(safe-area-inset-left));padding-right:calc(33px + env(safe-area-inset-right));touch-action:pan-y;overscroll-behavior:none}
     /* Moving reading window: the line is much larger than the screen, but the frame clips it.
        JavaScript moves the hidden horizontal viewport to follow the active word. */
     .focusFrame{height:100%;border-radius:14px;overflow-x:hidden;overflow-y:hidden;scroll-behavior:smooth;box-shadow:inset 0 0 0 1px rgba(255,255,255,.035)}
@@ -137,15 +137,16 @@
     .cropCard.textUnit.paragraphMode{width:100%;max-width:100%}
     .cropCard.visualUnit .cropInner,.cropCard.visualUnit canvas{max-width:92vw;max-height:62dvh}
     .unitTag{left:auto;right:4px;top:-30px;margin-left:0;font-size:9px;padding:5px 7px}
-    .flowStack{gap:8px}
+    .flowStack{gap:8px;align-items:flex-start}
+    .cropCard.textUnit.paragraphMode,.cropCard.visualUnit{align-self:center}
     .wordBox{border-width:2.5px}
-    .railPanel{right:2px;top:12px;bottom:calc(100px + env(safe-area-inset-bottom));width:28px;gap:5px}
+    .railPanel{right:calc(2px + env(safe-area-inset-right));top:12px;bottom:calc(100px + env(safe-area-inset-bottom));width:28px;gap:5px}
     .railCol{width:8px}.rail{width:3px}.railMarker{width:12px}.railLabel{font-size:7px}
-    .readout{left:10px;right:10px;bottom:calc(78px + env(safe-area-inset-bottom));padding:6px 9px;text-align:center;font-size:10px;border-radius:9px;pointer-events:none}
+    .readout{left:calc(10px + env(safe-area-inset-left));right:calc(10px + env(safe-area-inset-right));bottom:calc(78px + env(safe-area-inset-bottom));padding:6px 9px;text-align:center;font-size:10px;border-radius:9px;pointer-events:none}
     .hint{display:none}
     .loading{padding:30px;text-align:center;font-size:14px}
     .error{left:12px;right:12px;top:50%;transform:translateY(-50%);max-width:none;padding:16px}
-    .mobileDock{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:7px;position:fixed;left:8px;right:8px;bottom:calc(7px + env(safe-area-inset-bottom));z-index:70;padding:7px;background:rgba(12,12,12,.94);border:1px solid #292929;border-radius:17px;box-shadow:0 12px 36px rgba(0,0,0,.55);backdrop-filter:blur(14px)}
+    .mobileDock{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:7px;position:fixed;left:calc(8px + env(safe-area-inset-left));right:calc(8px + env(safe-area-inset-right));bottom:calc(7px + env(safe-area-inset-bottom));z-index:70;padding:7px;background:rgba(12,12,12,.94);border:1px solid #292929;border-radius:17px;box-shadow:0 12px 36px rgba(0,0,0,.55);backdrop-filter:blur(14px)}
     .mobileDock button{min-height:52px;padding:6px 4px;border-radius:12px;font-size:12px;font-weight:800;line-height:1.05}
     .mobileDock button .mi{display:block;font-size:21px;line-height:1.15;margin-bottom:2px}
     .mobileDock button.active{background:var(--accent);border-color:var(--accent)}
@@ -155,15 +156,15 @@
   @media(max-width:380px){
     .brand span:last-child{display:none}.mobileTopActions button{padding:7px 9px}
     .mobileDock{gap:5px}.mobileDock button{font-size:11px}
-    .focusWrap{padding-left:7px;padding-right:27px}
+    .focusWrap{padding-left:calc(7px + env(safe-area-inset-left));padding-right:calc(27px + env(safe-area-inset-right))}
   }
-  @media(max-width:720px) and (orientation:landscape){
+  @media (max-height:500px) and (orientation:landscape) and (pointer:coarse){
     header{min-height:calc(46px + env(safe-area-inset-top));padding-top:calc(4px + env(safe-area-inset-top));padding-bottom:4px}
-    .mobileDock{left:auto;width:300px;right:8px;grid-template-columns:repeat(4,1fr)}
+    .mobileDock{left:auto;width:300px;right:calc(8px + env(safe-area-inset-right));grid-template-columns:repeat(4,1fr)}
     .mobileDock button{min-height:44px}.mobileDock button .mi{font-size:18px}
-    .readout{right:316px;left:8px;bottom:calc(10px + env(safe-area-inset-bottom))}
+    .readout{right:calc(316px + env(safe-area-inset-right));left:calc(8px + env(safe-area-inset-left));bottom:calc(10px + env(safe-area-inset-bottom))}
     .focusWrap{padding-bottom:64px}.railPanel{bottom:68px}
-    .toolbar{bottom:calc(62px + env(safe-area-inset-bottom));left:auto;width:min(430px,94vw)}
+    .toolbar{bottom:calc(62px + env(safe-area-inset-bottom));left:auto;right:calc(10px + env(safe-area-inset-right));width:min(430px,calc(94vw - env(safe-area-inset-left) - env(safe-area-inset-right)))}
   }
 
 </style>
@@ -220,7 +221,9 @@
 const EMBEDDED_B64 = '';
 const BASELINE_NAME = 'Choose a PDF';
 // Render pages above their display resolution so close-up focus text stays sharp.
-const RENDER_QUALITY = Math.max(3, Math.min(3.5, (window.devicePixelRatio || 1) * 1.5));
+const PHONE_MEDIA = '(max-width:720px), (max-height:500px) and (pointer:coarse)';
+const PHONE_RENDER_QUALITY = Math.min(2, Math.max(1.6, (window.devicePixelRatio || 1) * .67));
+const RENDER_QUALITY = (window.matchMedia && window.matchMedia(PHONE_MEDIA).matches) ? PHONE_RENDER_QUALITY : Math.max(3, Math.min(3.5, (window.devicePixelRatio || 1) * 1.5));
 
 const $ = id => document.getElementById(id);
 const el = {
@@ -233,7 +236,7 @@ const mob = {
   open:$('mobileOpenBtn'), controls:$('mobileControlsBtn'), scrim:$('mobileScrim'), close:$('mobileCloseSheetBtn'),
   prev:$('mobilePrevBtn'), auto:$('mobileAutoBtn'), next:$('mobileNextBtn'), focus:$('mobileFocusBtn')
 };
-const isPhoneUI=()=>window.matchMedia && window.matchMedia('(max-width:720px)').matches;
+const isPhoneUI=()=>window.matchMedia && window.matchMedia(PHONE_MEDIA).matches;
 function setMobileSheet(on){
   if(!isPhoneUI()) on=false;
   document.querySelector('.toolbar')?.classList.toggle('mobileOpen',!!on);
@@ -416,7 +419,8 @@ async function preparePage(n){
   const state={page,viewport,canvas,lines,displayWidth:viewport.width/RENDER_QUALITY,displayHeight:viewport.height/RENDER_QUALITY,lineUnits:mergeReadingUnits(textLineUnits,visualUnits),paragraphUnits:buildParagraphUnits(lines,canvas.width,canvas.height)};
   cache.set(key,state);
   // High-resolution pages use more memory, so keep a tighter cache.
-  if(cache.size>4){ const first=cache.keys().next().value; cache.delete(first); }
+  const cacheLimit=isPhoneUI()?2:4;
+  if(cache.size>cacheLimit){ const first=cache.keys().next().value; cache.delete(first); }
   return state;
 }
 
@@ -431,13 +435,18 @@ async function loadPage(n, resetUnit=false){
   renderNormal(); renderFocus(false); updateUI(); if(focus)resetWordFollower();
   status(pdfDoc.numPages+' pages · '+currentName);
   // warm adjacent pages without blocking
-  if(n<pdfDoc.numPages) preparePage(n+1).catch(()=>{});
-  if(n>1) preparePage(n-1).catch(()=>{});
+  if(isPhoneUI()){
+    const warm=n+(direction<0?-1:1);
+    if(warm>=1&&warm<=pdfDoc.numPages) preparePage(warm).catch(()=>{});
+  }else{
+    if(n<pdfDoc.numPages) preparePage(n+1).catch(()=>{});
+    if(n>1) preparePage(n-1).catch(()=>{});
+  }
 }
 
 function renderNormal(){
   if(!pageState)return; const src=pageState.canvas, dst=el.normalCanvas; dst.width=src.width;dst.height=src.height;
-  dst.getContext('2d',{alpha:false}).drawImage(src,0,0); dst.style.width='min('+Math.round(pageState.displayWidth||src.width)+'px, calc(100vw - 150px))'; dst.style.height='auto';
+  dst.getContext('2d',{alpha:false}).drawImage(src,0,0); const phoneMax=isPhoneUI()?'calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right))':'calc(100vw - 150px)'; dst.style.width='min('+Math.round(pageState.displayWidth||src.width)+'px, '+phoneMax+')'; dst.style.height='auto';
 }
 
 
@@ -855,7 +864,7 @@ async function updateWakeLock(){
   }catch(_){wakeLock=null;}
 }
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')updateWakeLock();else if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null;}});
-window.matchMedia?.('(max-width:720px)').addEventListener?.('change',()=>setMobileSheet(false));
+window.matchMedia?.(PHONE_MEDIA).addEventListener?.('change',()=>setMobileSheet(false));
 window.addEventListener('keydown',e=>{
   if(e.target && /INPUT|SELECT/.test(e.target.tagName)) return;
   if(e.key==='ArrowDown'||e.key==='PageDown'||e.key===' '){e.preventDefault();step(1);} 
