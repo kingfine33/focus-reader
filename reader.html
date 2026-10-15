@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Focus Reader" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="format-detection" content="telephone=no" />
+<link rel="manifest" href="./manifest.webmanifest" />
+<title>Focus Book Reader</title>
+<style>
+  :root{
+    --bg:#000000; --paper:#101010; --ink:#f4f4f4; --muted:#a7a7a7; --line:#2b2b2b;
+    --accent:#e12639; --shadow:0 18px 55px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);overflow:hidden}
+  button,input,select{font:inherit}
+  .app{height:100%;display:grid;grid-template-rows:auto 1fr}
+  header{height:68px;display:flex;align-items:center;gap:12px;padding:10px 18px;background:rgba(10,10,10,.95);border-bottom:1px solid var(--line);backdrop-filter:blur(12px);z-index:20}
+  .brand{min-width:220px;display:flex;align-items:center;gap:10px;font-weight:750;letter-spacing:-.02em}
+  .bookdot{width:14px;height:20px;border-radius:2px;background:var(--accent);box-shadow:inset 4px 0 rgba(255,255,255,.25)}
+  .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+  .group{display:flex;align-items:center;gap:6px;padding:4px 7px;border:1px solid var(--line);border-radius:10px;background:#111}
+  .group label{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+  button,.filelabel,select,input[type=number]{border:1px solid var(--line);background:#111;color:var(--ink);border-radius:8px;padding:8px 10px;cursor:pointer}
+  button:hover,.filelabel:hover{background:#181818}
+  button.primary{background:#f4f4f4;color:#111;border-color:#f4f4f4}
+  button.active{background:var(--accent);color:white;border-color:var(--accent)}
+  button:disabled{opacity:.35;cursor:not-allowed}
+  .filelabel{display:inline-flex;align-items:center}
+  #fileInput{display:none}
+  input[type=number]{width:76px;cursor:text}
+  #speedInput{width:72px}
+  select{padding:8px 28px 8px 9px}
+  .status{margin-left:auto;min-width:140px;text-align:right;font-size:12px;color:var(--muted);white-space:nowrap}
+
+  main{position:relative;min-height:0;overflow:hidden}
+  .reader{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:22px 88px 32px 32px}
+  .normalWrap{position:absolute;inset:0;overflow:auto;padding:28px 100px 80px 30px;display:flex;justify-content:center;align-items:flex-start}
+  #normalCanvas{display:block;background:white;box-shadow:var(--shadow);max-width:100%;height:auto}
+
+  .focusWrap{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:30px 96px 50px 28px;overflow:hidden}
+  .focusWrap.on{display:flex}
+  .focusFrame{position:relative;width:100%;height:calc(100% - 20px);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:16px;background:#000}
+  .focusPane{position:absolute;width:100%;max-width:100%;max-height:90%;display:flex;align-items:center;justify-content:center;will-change:transform,opacity;overflow:visible}
+  .focusPane.enterDown{animation:enterDown .28s cubic-bezier(.2,.8,.2,1) both}
+  .focusPane.enterUp{animation:enterUp .28s cubic-bezier(.2,.8,.2,1) both}
+  .focusPane.exitUp{animation:exitUp .25s cubic-bezier(.4,0,1,1) both}
+  .focusPane.exitDown{animation:exitDown .25s cubic-bezier(.4,0,1,1) both}
+  @keyframes enterDown{from{transform:translateY(105%);opacity:.1}to{transform:translateY(0);opacity:1}}
+  @keyframes enterUp{from{transform:translateY(-105%);opacity:.1}to{transform:translateY(0);opacity:1}}
+  @keyframes exitUp{from{transform:translateY(0);opacity:1}to{transform:translateY(-105%);opacity:.05}}
+  @keyframes exitDown{from{transform:translateY(0);opacity:1}to{transform:translateY(105%);opacity:.05}}
+  .cropCard{position:relative;background:transparent;box-shadow:none;border-radius:0;overflow:visible;line-height:0;max-width:100%}
+  .cropInner{position:relative;background:white;box-shadow:var(--shadow);border-radius:5px;overflow:hidden}
+  .cropCard canvas{display:block;max-width:100%;max-height:72vh;width:auto;height:auto}
+  .cropCard.textUnit.lineMode{width:min(1480px,100%)}
+  .cropCard.textUnit.lineMode .cropInner{width:100%;max-width:100%}
+  .cropCard.textUnit.paragraphMode{width:min(1240px,100%)}
+  .cropCard.textUnit.paragraphMode .cropInner{width:100%;max-width:100%}
+  .cropCard.visualUnit .cropInner{max-width:88vw;max-height:74vh}
+  .cropCard.visualUnit canvas{max-width:88vw;max-height:74vh;width:auto;height:auto}
+  .cropCard.textUnit.lineMode canvas,
+  .cropCard.textUnit.paragraphMode canvas{display:block;width:100%;max-width:100%;height:auto;image-rendering:auto}
+  .cropCard.textUnit .cropInner::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--accent);opacity:.95}
+  .unitTag{position:absolute;left:100%;margin-left:12px;top:8px;background:rgba(42,72,130,.95);color:white;font-size:11px;line-height:1;padding:7px 9px;border-radius:8px;letter-spacing:.04em;text-transform:uppercase;opacity:.92;white-space:nowrap;pointer-events:none;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+  .wordOverlay{position:absolute;inset:0;pointer-events:none;z-index:6}
+  .wordBox{position:absolute;border:3px solid #ff334f;border-radius:5px;box-shadow:0 0 0 1px rgba(0,0,0,.35),0 0 12px rgba(255,51,79,.45);background:rgba(255,51,79,.06);transition:left .06s linear,top .06s linear,width .06s linear,height .06s linear,opacity .08s linear;opacity:0}
+  .wordBox.on{opacity:1}
+  .flowStack{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;gap:12px}
+  .flowGhost{opacity:.27;filter:contrast(.92);transform:scale(.985);transform-origin:center bottom;pointer-events:none}
+  .flowGhost .unitTag,.flowGhost .wordOverlay,.flowGhost .cropInner::after{display:none!important}
+  .flowGhost .cropInner{box-shadow:none}
+  .focusPane.flowTransition{animation:flowEnter .20s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes flowEnter{from{transform:translateY(22px);opacity:.55}to{transform:translateY(0);opacity:1}}
+
+  .railPanel{position:absolute;right:18px;top:24px;bottom:28px;width:56px;display:flex;gap:11px;justify-content:center;z-index:15;pointer-events:none}
+  .railCol{position:relative;width:12px;display:flex;justify-content:center}
+  .rail{position:absolute;top:24px;bottom:30px;width:4px;border-radius:4px;background:#3a3a3a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+  .railMarker{position:absolute;left:50%;width:18px;height:3px;transform:translate(-50%,-50%);background:var(--accent);border-radius:4px;box-shadow:0 0 0 2px var(--bg), 0 0 10px rgba(225,38,57,.5)}
+  .railLabel{position:absolute;bottom:4px;font-size:9px;font-weight:800;letter-spacing:.08em;color:var(--muted);writing-mode:vertical-rl;transform:rotate(180deg)}
+  .readout{position:absolute;left:20px;bottom:18px;z-index:16;background:rgba(12,12,12,.92);border:1px solid var(--line);border-radius:11px;padding:9px 12px;box-shadow:0 8px 26px rgba(0,0,0,.28);font-size:12px;color:var(--muted);backdrop-filter:blur(8px)}
+  .readout b{color:var(--ink)}
+  .hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font-size:12px;color:#8a8a8a;opacity:.75;white-space:nowrap}
+  .loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.82);z-index:30;font-weight:700;letter-spacing:.01em;pointer-events:none}
+  .loading.hidden{display:none}
+  .error{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);max-width:640px;background:#101010;border:1px solid #3a1f24;padding:20px;border-radius:14px;box-shadow:var(--shadow);display:none;z-index:40}
+  .error b{color:var(--accent)}
+  @media(max-width:900px){
+    header{height:auto;min-height:68px}.brand{min-width:auto}.status{display:none}.reader{padding-right:64px}.focusWrap{padding-right:74px;padding-left:18px}.railPanel{right:6px}.hint{display:none}.unitTag{left:auto;right:6px;top:-34px;margin-left:0}
+  }
+
+  /* iPhone / touch shell. The PDF + line/word detection engine below is unchanged. */
+  .mobileTopActions,.mobileDock,.mobileScrim,.mobileSheetClose{display:none}
+  @supports(height:100dvh){.app{height:100dvh}}
+  @media(max-width:720px){
+    html,body{width:100%;height:100%;overscroll-behavior:none;background:#000}
+    body{-webkit-text-size-adjust:100%;touch-action:manipulation}
+    .app{height:100dvh;min-height:100dvh;grid-template-rows:auto 1fr}
+    header{height:auto;min-height:calc(54px + env(safe-area-inset-top));padding:calc(7px + env(safe-area-inset-top)) 10px 7px;gap:8px;justify-content:space-between;z-index:90;backdrop-filter:none;-webkit-backdrop-filter:none}
+    .brand{min-width:0;font-size:14px;gap:8px;white-space:nowrap}.bookdot{width:10px;height:16px}
+    .status{display:none}
+    .mobileTopActions{display:flex;gap:7px;margin-left:auto}
+    .mobileTopActions button{min-height:38px;padding:7px 11px;font-size:13px;font-weight:750}
+    .toolbar{display:none;position:fixed;left:10px;right:10px;bottom:calc(82px + env(safe-area-inset-bottom));z-index:120;max-height:min(62dvh,560px);overflow:auto;-webkit-overflow-scrolling:touch;background:rgba(12,12,12,.995);border:1px solid #3a3a3a;border-radius:18px;padding:12px;box-shadow:0 20px 60px rgba(0,0,0,.78);grid-template-columns:1fr 1fr;gap:9px;visibility:hidden;opacity:0;pointer-events:none}
+    .toolbar.mobileOpen{display:grid;visibility:visible;opacity:1;pointer-events:auto}
+    .toolbar>*{min-width:0}
+    .toolbar button,.toolbar .filelabel,.toolbar .group{width:100%;min-height:46px}
+    .toolbar .filelabel,.toolbar button{display:flex;align-items:center;justify-content:center;font-weight:720}
+    .toolbar .group{justify-content:space-between;padding:6px 9px}
+    .mobileSheetClose{display:flex!important;grid-column:1/-1;align-items:center;justify-content:center;min-height:42px!important;background:#f4f4f4!important;color:#111!important;border-color:#f4f4f4!important;font-weight:850!important}
+    .toolbar .group label{font-size:10px}
+    .toolbar select,.toolbar input[type=number]{min-width:0;max-width:58%;font-size:16px}
+    .toolbar #prevBtn,.toolbar #nextBtn{display:none}
+    .mobileScrim{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.44);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+    .mobileScrim.on{display:block}
+    main{min-height:0}
+    .normalWrap{padding:14px 12px calc(112px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+    #normalCanvas{max-width:100%;box-shadow:none}
+    .focusWrap{padding:8px 33px calc(116px + env(safe-area-inset-bottom)) 10px;touch-action:pan-y;overscroll-behavior:none}
+    /* Moving reading window: the line is much larger than the screen, but the frame clips it.
+       JavaScript moves the hidden horizontal viewport to follow the active word. */
+    .focusFrame{height:100%;border-radius:14px;overflow-x:hidden;overflow-y:hidden;scroll-behavior:smooth;box-shadow:inset 0 0 0 1px rgba(255,255,255,.035)}
+    .focusFrame::before,.focusFrame::after{content:"";position:absolute;top:0;bottom:0;width:34px;z-index:20;pointer-events:none}
+    .focusFrame::before{left:0;background:linear-gradient(90deg,#000 8%,rgba(0,0,0,.72) 42%,transparent)}
+    .focusFrame::after{right:0;background:linear-gradient(270deg,#000 8%,rgba(0,0,0,.72) 42%,transparent)}
+    .focusPane{max-height:96%;justify-content:flex-start;overflow:visible}
+    .cropCard canvas{max-height:66dvh}
+    .cropCard.textUnit.lineMode{width:var(--phone-line-width,420%);max-width:none;flex:0 0 auto}
+    .cropCard.textUnit.lineMode .cropInner{width:100%;max-width:none}
+    .cropCard.textUnit.lineMode canvas{width:100%;max-width:none;height:auto}
+    .cropCard.textUnit.paragraphMode{width:100%;max-width:100%}
+    .cropCard.visualUnit .cropInner,.cropCard.visualUnit canvas{max-width:92vw;max-height:62dvh}
+    .unitTag{left:auto;right:4px;top:-30px;margin-left:0;font-size:9px;padding:5px 7px}
+    .flowStack{gap:8px}
+    .wordBox{border-width:2.5px}
+    .railPanel{right:2px;top:12px;bottom:calc(100px + env(safe-area-inset-bottom));width:28px;gap:5px}
+    .railCol{width:8px}.rail{width:3px}.railMarker{width:12px}.railLabel{font-size:7px}
+    .readout{left:10px;right:10px;bottom:calc(78px + env(safe-area-inset-bottom));padding:6px 9px;text-align:center;font-size:10px;border-radius:9px;pointer-events:none}
+    .hint{display:none}
+    .loading{padding:30px;text-align:center;font-size:14px}
+    .error{left:12px;right:12px;top:50%;transform:translateY(-50%);max-width:none;padding:16px}
+    .mobileDock{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:7px;position:fixed;left:8px;right:8px;bottom:calc(7px + env(safe-area-inset-bottom));z-index:70;padding:7px;background:rgba(12,12,12,.94);border:1px solid #292929;border-radius:17px;box-shadow:0 12px 36px rgba(0,0,0,.55);backdrop-filter:blur(14px)}
+    .mobileDock button{min-height:52px;padding:6px 4px;border-radius:12px;font-size:12px;font-weight:800;line-height:1.05}
+    .mobileDock button .mi{display:block;font-size:21px;line-height:1.15;margin-bottom:2px}
+    .mobileDock button.active{background:var(--accent);border-color:var(--accent)}
+    .mobileDock button.primary{background:#f4f4f4;color:#111;border-color:#f4f4f4}
+    button,.filelabel,select,input{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  }
+  @media(max-width:380px){
+    .brand span:last-child{display:none}.mobileTopActions button{padding:7px 9px}
+    .mobileDock{gap:5px}.mobileDock button{font-size:11px}
+    .focusWrap{padding-left:7px;padding-right:27px}
+  }
+  @media(max-width:720px) and (orientation:landscape){
+    header{min-height:calc(46px + env(safe-area-inset-top));padding-top:calc(4px + env(safe-area-inset-top));padding-bottom:4px}
+    .mobileDock{left:auto;width:300px;right:8px;grid-template-columns:repeat(4,1fr)}
+    .mobileDock button{min-height:44px}.mobileDock button .mi{font-size:18px}
+    .readout{right:316px;left:8px;bottom:calc(10px + env(safe-area-inset-bottom))}
+    .focusWrap{padding-bottom:64px}.railPanel{bottom:68px}
+    .toolbar{bottom:calc(62px + env(safe-area-inset-bottom));left:auto;width:min(430px,94vw)}
+  }
+
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand"><span class="bookdot"></span><span>Focus Book Reader</span></div>
+  <div class="mobileTopActions">
+    <button id="mobileOpenBtn" type="button">Open PDF</button>
+    <button id="mobileControlsBtn" type="button">Controls</button>
+  </div>
+  <div class="toolbar">
+    <button id="mobileCloseSheetBtn" class="mobileSheetClose" type="button">Done</button>
+    <label class="filelabel" title="Open any PDF">Open PDF<input id="fileInput" type="file" accept="application/pdf,.pdf"></label>
+    <button id="focusBtn" class="primary" title="Toggle focus reading mode (F)">Focus: OFF</button>
+    <div class="group"><label>Unit</label><select id="unitMode"><option value="line">Line</option><option value="paragraph">Paragraph</option></select></div>
+    <div class="group"><label>Speed</label><input id="speedInput" type="number" min="60" max="1200" step="10" value="250"><span>WPM</span></div>
+    <button id="outlineBtn" title="Toggle single-word outline">Outliner: OFF</button>
+    <button id="autoBtn" title="Automatically move word-by-word and then advance to the next line">Auto: OFF</button>
+    <button id="flowBtn" title="Thought continuity: when a sentence continues across a line break, keep the previous line faintly visible and use a softer transition">Flow: OFF</button>
+    <button id="prevBtn" title="Previous line / unit (Up Arrow)">↑ Previous</button>
+    <button id="nextBtn" title="Next line / unit (Down Arrow)">Next ↓</button>
+    <div class="group"><label>Page</label><input id="pageInput" type="number" min="1" value="1"><span id="pageTotal">/ -</span></div>
+    <div class="group"><label>Zoom</label><select id="zoomSelect"><option value="1.25">125%</option><option value="1.5" selected>150%</option><option value="1.75">175%</option><option value="2">200%</option></select></div>
+    <div class="group"><label>Reading Size</label><select id="lineSizeSelect" title="Size of the moving reading window text on phones"><option value="300">300%</option><option value="360">360%</option><option value="420" selected>420%</option><option value="480">480%</option><option value="550">550%</option><option value="650">650%</option></select></div>
+  </div>
+  <div id="status" class="status">Choose a PDF to begin</div>
+</header>
+<main>
+  <div id="normalWrap" class="normalWrap"><canvas id="normalCanvas"></canvas></div>
+  <div id="focusWrap" class="focusWrap"><div id="focusFrame" class="focusFrame"></div></div>
+  <div class="railPanel" aria-hidden="true">
+    <div class="railCol"><div class="rail"><div id="bookMarker" class="railMarker" style="top:0%"></div></div><div class="railLabel">BOOK</div></div>
+    <div class="railCol"><div class="rail"><div id="lineMarker" class="railMarker" style="top:0%"></div></div><div class="railLabel">LINE</div></div>
+  </div>
+  <div id="readout" class="readout"><b>Page 1</b> · ready</div>
+  <div class="hint">Focus: ↑/↓ line · F focus · Auto follows words · Flow bridges sentence-continuation line breaks</div>
+  <div id="mobileScrim" class="mobileScrim" aria-hidden="true"></div>
+  <div class="mobileDock" aria-label="Reading controls">
+    <button id="mobilePrevBtn" type="button"><span class="mi">↑</span>Previous</button>
+    <button id="mobileAutoBtn" type="button"><span class="mi">▶</span>Auto</button>
+    <button id="mobileNextBtn" type="button"><span class="mi">↓</span>Next</button>
+    <button id="mobileFocusBtn" type="button"><span class="mi">◎</span>Focus</button>
+  </div>
+  <div id="loading" class="loading">Choose a PDF to start reading</div>
+  <div id="error" class="error"><b>Could not start the PDF reader.</b><div id="errorText" style="margin-top:8px;line-height:1.45"></div></div>
+</main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+(() => {
+'use strict';
+const EMBEDDED_B64 = '';
+const BASELINE_NAME = 'Choose a PDF';
+// Render pages above their display resolution so close-up focus text stays sharp.
+const RENDER_QUALITY = Math.max(3, Math.min(3.5, (window.devicePixelRatio || 1) * 1.5));
+
+const $ = id => document.getElementById(id);
+const el = {
+  fileInput:$('fileInput'), focusBtn:$('focusBtn'), unitMode:$('unitMode'), speedInput:$('speedInput'), outlineBtn:$('outlineBtn'), autoBtn:$('autoBtn'), flowBtn:$('flowBtn'), prevBtn:$('prevBtn'), nextBtn:$('nextBtn'),
+  pageInput:$('pageInput'), pageTotal:$('pageTotal'), zoomSelect:$('zoomSelect'), lineSizeSelect:$('lineSizeSelect'), status:$('status'), normalWrap:$('normalWrap'),
+  normalCanvas:$('normalCanvas'), focusWrap:$('focusWrap'), focusFrame:$('focusFrame'), bookMarker:$('bookMarker'), lineMarker:$('lineMarker'),
+  readout:$('readout'), loading:$('loading'), error:$('error'), errorText:$('errorText')
+};
+const mob = {
+  open:$('mobileOpenBtn'), controls:$('mobileControlsBtn'), scrim:$('mobileScrim'), close:$('mobileCloseSheetBtn'),
+  prev:$('mobilePrevBtn'), auto:$('mobileAutoBtn'), next:$('mobileNextBtn'), focus:$('mobileFocusBtn')
+};
+const isPhoneUI=()=>window.matchMedia && window.matchMedia('(max-width:720px)').matches;
+function setMobileSheet(on){
+  if(!isPhoneUI()) on=false;
+  document.querySelector('.toolbar')?.classList.toggle('mobileOpen',!!on);
+  mob.scrim?.classList.toggle('on',!!on);
+  mob.controls?.setAttribute('aria-expanded',on?'true':'false');
+}
+function safeStore(k,v){try{localStorage.setItem(k,String(v));}catch(_){}}
+function safeRead(k){try{return localStorage.getItem(k);}catch(_){return null;}}
+function applyPhoneLineSize(){
+  const n=clamp(parseInt(el.lineSizeSelect?.value||'420'),250,700);
+  document.documentElement.style.setProperty('--phone-line-width',n+'%');
+}
+
+let pdfDoc=null, pageNum=1, focus=false, unitIndex=0, pageState=null, direction=1, renderToken=0, currentName=BASELINE_NAME;
+let outlineOn=false, autoOn=false, wordIndex=0, autoTimer=null, wordBoxes=[];
+const cache = new Map();
+let flowOn=false, flowCarry=null;
+
+function showError(msg){ el.loading.classList.add('hidden'); el.error.style.display='block'; el.errorText.textContent=msg; }
+function status(s){ el.status.textContent=s; }
+function b64ToBytes(b64){ const bin=atob(b64), n=bin.length, a=new Uint8Array(n); for(let i=0;i<n;i++) a[i]=bin.charCodeAt(i); return a; }
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function pct(n,d){ return d<=1?0:(n/(d-1))*100; }
+
+async function loadPdf(data, name){
+  cache.clear(); pageNum=1; unitIndex=0; currentName=name||'PDF'; el.error.style.display='none'; el.loading.classList.remove('hidden');
+  status('Opening '+currentName+'…');
+  const task = pdfjsLib.getDocument({data});
+  pdfDoc = await task.promise;
+  el.pageTotal.textContent='/ '+pdfDoc.numPages; el.pageInput.max=pdfDoc.numPages; el.pageInput.value='1';
+  await loadPage(1, true);
+  el.loading.classList.add('hidden');
+  status(pdfDoc.numPages+' pages · '+currentName);
+}
+
+function groupLines(textContent, viewport){
+  const raw=[];
+  for(const it of textContent.items){
+    if(!it.str || !it.str.trim()) continue;
+    const tx = pdfjsLib.Util.transform(viewport.transform, it.transform);
+    const x=tx[4], y=tx[5];
+    const fontH=Math.max(4, Math.hypot(tx[2],tx[3]));
+    const w=Math.max(1, it.width * viewport.scale);
+    raw.push({text:it.str,x,y,w,h:fontH});
+  }
+  raw.sort((a,b)=> a.y===b.y ? a.x-b.x : a.y-b.y);
+  const lines=[];
+  const yTol = Math.max(2.8, 2.8 * viewport.scale);
+  for(const it of raw){
+    let best=null, bestDy=Infinity;
+    for(let i=lines.length-1;i>=0 && i>=lines.length-8;i--){
+      const dy=Math.abs(lines[i].y-it.y); if(dy<bestDy && dy<yTol){best=lines[i];bestDy=dy;}
+    }
+    if(!best){best={items:[],y:it.y,x1:it.x,x2:it.x+it.w,h:it.h};lines.push(best);}
+    best.items.push(it); best.x1=Math.min(best.x1,it.x); best.x2=Math.max(best.x2,it.x+it.w); best.h=Math.max(best.h,it.h); best.y=(best.y*(best.items.length-1)+it.y)/best.items.length;
+  }
+  for(const ln of lines){ ln.items.sort((a,b)=>a.x-b.x); ln.text=ln.items.map(x=>x.text).join(' ').replace(/\s+/g,' ').trim(); }
+  lines.sort((a,b)=>a.y-b.y);
+  return lines.filter(l=>l.text);
+}
+
+function buildLineUnits(lines, W, H){
+  if(!lines.length) return [];
+  const units=[];
+  const marginX=Math.max(8,W*.02);
+  for(let i=0;i<lines.length;i++){
+    const ln=lines[i], prev=i?lines[i-1]:null, next=i+1<lines.length?lines[i+1]:null;
+    const approxTop=ln.y-ln.h*1.08;
+    const approxBottom=ln.y+Math.max(1,ln.h*.18);
+    // Use midpoint boundaries between neighboring baselines so one focus unit cannot steal the line above/below.
+    const prevBoundary=prev ? (prev.y + ln.y)/2 : Math.max(0, approxTop-ln.h*.35);
+    const nextBoundary=next ? (ln.y + next.y)/2 : Math.min(H, approxBottom+ln.h*.35);
+    const y1=Math.max(0, Math.max(prevBoundary, approxTop-ln.h*.08));
+    const y2=Math.min(H, Math.min(nextBoundary, approxBottom+ln.h*.08));
+    units.push({type:'text',x1:Math.max(0,ln.x1-marginX),y1,x2:Math.min(W,ln.x2+marginX),y2,text:ln.text,items:ln.items});
+  }
+  return units.filter(u=>u.y2-u.y1>2);
+}
+
+function scanInkBox(canvas, x1, y1, x2, y2, minRowFrac=.002, minColFrac=.002){
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});
+  x1=clamp(Math.floor(x1),0,canvas.width-1); y1=clamp(Math.floor(y1),0,canvas.height-1);
+  x2=clamp(Math.ceil(x2),x1+1,canvas.width); y2=clamp(Math.ceil(y2),y1+1,canvas.height);
+  const w=x2-x1,h=y2-y1;
+  if(w<=1||h<=1)return null;
+  const data=ctx.getImageData(x1,y1,w,h).data;
+  const rows=new Uint32Array(h), cols=new Uint32Array(w);
+  let total=0;
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const j=(y*w+x)*4;
+      // Treat anti-aliased dark/colored marks as content, near-white paper as blank.
+      if(data[j]<242 || data[j+1]<242 || data[j+2]<242){ rows[y]++; cols[x]++; total++; }
+    }
+  }
+  if(total<8)return null;
+  const rowMin=Math.max(2,Math.floor(w*minRowFrac));
+  const colMin=Math.max(2,Math.floor(h*minColFrac));
+  let top=-1,bottom=-1,left=-1,right=-1;
+  for(let y=0;y<h;y++) if(rows[y]>=rowMin){top=y;break;}
+  for(let y=h-1;y>=0;y--) if(rows[y]>=rowMin){bottom=y;break;}
+  for(let x=0;x<w;x++) if(cols[x]>=colMin){left=x;break;}
+  for(let x=w-1;x>=0;x--) if(cols[x]>=colMin){right=x;break;}
+  if(top<0||left<0)return null;
+  return {x1:x1+left,y1:y1+top,x2:x1+right+1,y2:y1+bottom+1,ink:total};
+}
+
+function buildVisualUnits(lines, canvas){
+  const W=canvas.width,H=canvas.height;
+  if(!lines.length){
+    const box=scanInkBox(canvas,0,0,W,H,.0008,.0008);
+    return box?[{type:'visual',...box,text:'Page visual'}]:[];
+  }
+  const gaps=[];
+  const firstTop=Math.max(0,lines[0].y-lines[0].h*1.25);
+  if(firstTop>H*.04)gaps.push([0,firstTop]);
+  for(let i=0;i<lines.length-1;i++){
+    const a=lines[i],b=lines[i+1];
+    const gy1=a.y+Math.max(2,a.h*.3), gy2=b.y-b.h*1.15;
+    if(gy2-gy1>Math.max(18,H*.018))gaps.push([gy1,gy2]);
+  }
+  const lastBottom=lines[lines.length-1].y+lines[lines.length-1].h*.35;
+  if(H-lastBottom>H*.04)gaps.push([lastBottom,H]);
+  const out=[];
+  for(const [gy1,gy2] of gaps){
+    const box=scanInkBox(canvas,0,gy1,W,gy2,.0012,.0012);
+    if(!box)continue;
+    const bw=box.x2-box.x1,bh=box.y2-box.y1;
+    // Reject tiny specks/rules. Keep genuine figures, photos, diagrams, or large graphic blocks.
+    if(bw<W*.08 || bh<H*.018)continue;
+    const padX=Math.max(6,W*.012),padY=Math.max(6,H*.008);
+    out.push({type:'visual',x1:Math.max(0,box.x1-padX),y1:Math.max(0,box.y1-padY),x2:Math.min(W,box.x2+padX),y2:Math.min(H,box.y2+padY),text:'Visual'});
+  }
+  return out;
+}
+
+function mergeReadingUnits(textUnits, visualUnits){
+  return [...textUnits,...visualUnits].sort((a,b)=>a.y1-b.y1 || a.x1-b.x1);
+}
+
+function buildParagraphUnits(lines,W,H){
+  if(!lines.length) return [{type:'visual',x1:0,y1:0,x2:W,y2:H,text:'Full-page visual'}];
+  const heights=lines.map(l=>l.h).sort((a,b)=>a-b); const med=heights[Math.floor(heights.length/2)]||12;
+  const groups=[]; let cur=[];
+  for(let i=0;i<lines.length;i++){
+    const ln=lines[i];
+    if(cur.length){ const prev=cur[cur.length-1]; const gap=(ln.y-ln.h)-prev.y; if(gap>med*1.25){groups.push(cur);cur=[];} }
+    cur.push(ln);
+  }
+  if(cur.length)groups.push(cur);
+  const units=[];
+  for(let gi=0;gi<groups.length;gi++){
+    const g=groups[gi]; const x1=Math.min(...g.map(l=>l.x1)), x2=Math.max(...g.map(l=>l.x2));
+    const y1=Math.max(0,g[0].y-g[0].h-med*.45), y2=Math.min(H,g[g.length-1].y+med*.55);
+    units.push({type:'text',x1:Math.max(0,x1-W*.035),y1,x2:Math.min(W,x2+W*.035),y2,text:g.map(l=>l.text).join(' '),items:g.flatMap(l=>l.items)});
+    if(gi+1<groups.length){ const a=y2,b=Math.max(y2,groups[gi+1][0].y-groups[gi+1][0].h-med*.45); if(b-a>H*.055) units.push({type:'visual',x1:0,y1:a,x2:W,y2:b,text:'Visual / diagram region'}); }
+  }
+  if(groups[0][0].y>H*.17) units.unshift({type:'visual',x1:0,y1:0,x2:W,y2:Math.max(1,groups[0][0].y-groups[0][0].h*1.3),text:'Visual region'});
+  const last=groups[groups.length-1][groups[groups.length-1].length-1]; if(H-last.y>H*.2) units.push({type:'visual',x1:0,y1:last.y+last.h*.35,x2:W,y2:H,text:'Visual region'});
+  return units.filter(u=>u.y2-u.y1>2);
+}
+
+async function preparePage(n){
+  const zoom=parseFloat(el.zoomSelect.value);
+  const renderScale=zoom*RENDER_QUALITY;
+  const key=n+'@'+zoom+'@hq'+RENDER_QUALITY.toFixed(2);
+  if(cache.has(key)) return cache.get(key);
+  const page=await pdfDoc.getPage(n);
+  const viewport=page.getViewport({scale:renderScale});
+  const canvas=document.createElement('canvas'); canvas.width=Math.ceil(viewport.width); canvas.height=Math.ceil(viewport.height);
+  const ctx=canvas.getContext('2d',{alpha:false});
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+  ctx.fillStyle='white';ctx.fillRect(0,0,canvas.width,canvas.height);
+  const renderPromise=page.render({canvasContext:ctx,viewport}).promise;
+  const textPromise=page.getTextContent();
+  const [,textContent]=await Promise.all([renderPromise,textPromise]);
+  const lines=groupLines(textContent,viewport);
+  const textLineUnits=buildLineUnits(lines,canvas.width,canvas.height);
+  const visualUnits=buildVisualUnits(lines,canvas);
+  const state={page,viewport,canvas,lines,displayWidth:viewport.width/RENDER_QUALITY,displayHeight:viewport.height/RENDER_QUALITY,lineUnits:mergeReadingUnits(textLineUnits,visualUnits),paragraphUnits:buildParagraphUnits(lines,canvas.width,canvas.height)};
+  cache.set(key,state);
+  // High-resolution pages use more memory, so keep a tighter cache.
+  if(cache.size>4){ const first=cache.keys().next().value; cache.delete(first); }
+  return state;
+}
+
+function units(){ return !pageState?[]:(el.unitMode.value==='paragraph'?pageState.paragraphUnits:pageState.lineUnits); }
+
+async function loadPage(n, resetUnit=false){
+  if(!pdfDoc)return; n=clamp(Math.round(n),1,pdfDoc.numPages); const token=++renderToken;
+  status('Rendering page '+n+'…');
+  const st=await preparePage(n); if(token!==renderToken)return;
+  pageState=st; pageNum=n; el.pageInput.value=n;
+  if(resetUnit) unitIndex= direction<0 ? Math.max(0,units().length-1) : 0; else unitIndex=clamp(unitIndex,0,Math.max(0,units().length-1));
+  renderNormal(); renderFocus(false); updateUI(); if(focus)resetWordFollower();
+  status(pdfDoc.numPages+' pages · '+currentName);
+  // warm adjacent pages without blocking
+  if(n<pdfDoc.numPages) preparePage(n+1).catch(()=>{});
+  if(n>1) preparePage(n-1).catch(()=>{});
+}
+
+function renderNormal(){
+  if(!pageState)return; const src=pageState.canvas, dst=el.normalCanvas; dst.width=src.width;dst.height=src.height;
+  dst.getContext('2d',{alpha:false}).drawImage(src,0,0); dst.style.width='min('+Math.round(pageState.displayWidth||src.width)+'px, calc(100vw - 150px))'; dst.style.height='auto';
+}
+
+
+function clearAutoTimer(){ if(autoTimer){clearTimeout(autoTimer);autoTimer=null;} }
+function readingDelay(word){
+  const wpm=clamp(parseInt(el.speedInput.value||'250'),60,1200);
+  let ms=60000/wpm;
+  if(/[.!?][\"'”’)]?$/.test(word)) ms*=1.9;
+  else if(/[,;:][\"'”’)]?$/.test(word)) ms*=1.35;
+  return Math.max(45,ms);
+}
+function itemWordBoxes(unit){
+  // Hybrid word detector:
+  // 1) HARD vertical boundary = only the current focus line can contribute pixels.
+  // 2) Measure every real horizontal whitespace gap in that line.
+  // 3) Learn the line's letter-spacing vs word-spacing differential dynamically.
+  // 4) Cross-check the chosen word boundaries against PDF.js text geometry.
+  // This prevents neighboring hidden lines, single-letter "words", and left/right jumping.
+  if(!pageState?.canvas) return [];
+  const items=(unit.items||[]).filter(it=>it.text && it.text.trim()).sort((a,b)=>a.x-b.x);
+  if(!items.length) return [];
+
+  const canvas=pageState.canvas, ctx=canvas.getContext('2d',{willReadFrequently:true});
+  const rowH=Math.max(8, Math.max(...items.map(i=>i.h||8)));
+
+  // Strict line-only vertical territory. Never expand outside the unit's midpoint boundaries.
+  // Shrinking by a small amount keeps anti-aliased pixels from the neighboring line out.
+  const hardTop=clamp(Math.ceil((unit.y1??0)+Math.max(1,rowH*.035)),0,canvas.height-1);
+  const hardBottom=clamp(Math.floor((unit.y2??canvas.height)-Math.max(1,rowH*.035)),hardTop+1,canvas.height);
+
+  // Horizontal territory is based on the actual PDF items with a little room for italic/serif overhang.
+  const metricLeft=Math.min(...items.map(i=>i.x));
+  const metricRight=Math.max(...items.map(i=>i.x+i.w));
+  let rx1=clamp(Math.floor(metricLeft-rowH*.42),0,canvas.width-1);
+  let rx2=clamp(Math.ceil(metricRight+rowH*.42),rx1+1,canvas.width);
+  const W=rx2-rx1, H=hardBottom-hardTop;
+  if(W<2||H<2)return [];
+
+  // Read the line raster and make an x projection. A column is "ink" when enough dark pixels occur
+  // inside the hard active-line boundary. No pixels above/below this boundary are ever inspected.
+  const data=ctx.getImageData(rx1,hardTop,W,H).data;
+  const cols=new Uint16Array(W);
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      const k=(y*W+x)*4, r=data[k],g=data[k+1],b=data[k+2],a=data[k+3];
+      if(a>20 && (r<232 || g<232 || b<232)) cols[x]++;
+    }
+  }
+  const minInk=Math.max(1,Math.floor(H*.018));
+  const runs=[]; let runStart=-1;
+  for(let x=0;x<W;x++){
+    const on=cols[x]>=minInk;
+    if(on && runStart<0)runStart=x;
+    if((!on || x===W-1) && runStart>=0){
+      const e=(on&&x===W-1)?x+1:x;
+      if(e-runStart>=1)runs.push([runStart,e]);
+      runStart=-1;
+    }
+  }
+  if(!runs.length)return [];
+
+  // Bridge only microscopic raster slivers (anti-aliasing / broken strokes), not real letter spaces.
+  const glyphRuns=[];
+  const microGap=Math.max(1,rowH*.018);
+  for(const r of runs){
+    if(!glyphRuns.length || r[0]-glyphRuns[glyphRuns.length-1][1] > microGap) glyphRuns.push([...r]);
+    else glyphRuns[glyphRuns.length-1][1]=r[1];
+  }
+
+  // Every blank interval between adjacent glyph groups is measured. These are the raw spacing samples.
+  const gaps=[];
+  for(let i=0;i<glyphRuns.length-1;i++){
+    const left=glyphRuns[i][1], right=glyphRuns[i+1][0], width=right-left;
+    if(width>0)gaps.push({left,right,width,mid:(left+right)/2});
+  }
+
+  // Words and rough expected word boundaries from PDF text geometry.
+  // The geometry is NOT used as the final box: it only tells the raster detector where a word break
+  // is expected, while the actual visible whitespace decides the precise boundary.
+  const tokens=[];
+  for(const it of items){
+    const str=it.text||'';
+    const denom=Math.max(1,str.length);
+    for(const m of str.matchAll(/\S+/g)){
+      const a=m.index||0, b=a+m[0].length;
+      tokens.push({
+        word:m[0],
+        approxX1:it.x+(a/denom)*it.w,
+        approxX2:it.x+(b/denom)*it.w
+      });
+    }
+  }
+  if(!tokens.length)return [];
+  tokens.sort((a,b)=>a.approxX1-b.approxX1);
+  const expected=[];
+  for(let i=0;i<tokens.length-1;i++) expected.push(((tokens[i].approxX2+tokens[i+1].approxX1)/2)-rx1);
+
+  // Learn letter-gap vs word-gap spacing for THIS line. Two-cluster 1D k-means is intentionally
+  // simple: the narrow cluster represents letter spacing; the wide cluster represents word spacing.
+  let letterGap=Math.max(1,rowH*.04), wordGap=Math.max(letterGap*2,rowH*.16);
+  if(gaps.length){
+    const widths=gaps.map(g=>g.width).sort((a,b)=>a-b);
+    let c1=widths[0], c2=widths[widths.length-1];
+    if(widths.length===1){ c1=Math.min(c1,rowH*.07); c2=widths[0]; }
+    else{
+      for(let it=0;it<10;it++){
+        let s1=0,n1=0,s2=0,n2=0;
+        for(const v of widths){
+          if(Math.abs(v-c1)<=Math.abs(v-c2)){s1+=v;n1++;}else{s2+=v;n2++;}
+        }
+        const nC1=n1?s1/n1:c1, nC2=n2?s2/n2:c2;
+        if(Math.abs(nC1-c1)+Math.abs(nC2-c2)<.05){c1=nC1;c2=nC2;break;}
+        c1=nC1;c2=nC2;
+      }
+      if(c1>c2)[c1,c2]=[c2,c1];
+    }
+    letterGap=Math.max(1,c1);
+    wordGap=Math.max(c2,letterGap*1.55);
+  }
+  const adaptiveThreshold=Math.max(rowH*.07, letterGap+(wordGap-letterGap)*.48, letterGap*1.42);
+
+  // Candidate word spaces are gaps that are sufficiently larger than learned letter spacing.
+  // Keep a few borderline gaps too, because unusual fonts can compress spaces.
+  const candidates=gaps.filter(g=>g.width>=adaptiveThreshold*.78).map(g=>({
+    ...g,
+    wordness:(g.width-letterGap)/Math.max(1,wordGap-letterGap)
+  }));
+
+  // Pick one real raster gap per expected PDF word boundary. Score combines proximity + how much the
+  // gap looks like a true word space. A candidate cannot be reused, preserving left-to-right order.
+  const boundaries=[]; const used=new Set(); let prev=-Infinity;
+  for(let i=0;i<expected.length;i++){
+    const ex=expected[i];
+    let best=null,bestScore=Infinity,bestIdx=-1;
+    for(let j=0;j<candidates.length;j++){
+      if(used.has(j))continue;
+      const g=candidates[j];
+      if(g.mid<=prev+1)continue;
+      const dist=Math.abs(g.mid-ex);
+      // Reject absurdly distant gaps unless no alternative exists.
+      if(dist>Math.max(rowH*1.25,W*.12))continue;
+      const score=dist - Math.max(0,g.wordness)*rowH*.22 - g.width*.08;
+      if(score<bestScore){bestScore=score;best=g;bestIdx=j;}
+    }
+    if(best){
+      boundaries.push(best.mid); used.add(bestIdx); prev=best.mid;
+    }else{
+      // Fallback: choose the nearest unused measured gap, never an arbitrary character-width split.
+      let near=null,nearD=Infinity,nearIdx=-1;
+      for(let j=0;j<gaps.length;j++){
+        const g=gaps[j]; if(g.mid<=prev+1)continue;
+        const d=Math.abs(g.mid-ex);
+        if(d<nearD){nearD=d;near=g;nearIdx=j;}
+      }
+      const b=near?near.mid:clamp(ex,prev+1,W-1);
+      boundaries.push(b); prev=b;
+    }
+  }
+
+  // Monotonic cleanup. If PDF extraction created a weird token, enforce strictly increasing boundaries.
+  for(let i=1;i<boundaries.length;i++) boundaries[i]=Math.max(boundaries[i],boundaries[i-1]+1);
+  const firstInk=glyphRuns[0][0], lastInk=glyphRuns[glyphRuns.length-1][1];
+  const edges=[Math.max(0,firstInk-rowH*.08),...boundaries,Math.min(W,lastInk+rowH*.08)];
+
+  const out=[];
+  for(let i=0;i<tokens.length;i++){
+    let localL=edges[i], localR=edges[i+1];
+    if(!(localR>localL))continue;
+    // Split at the middle of word spaces, then scan only INSIDE this token territory.
+    const inset=Math.max(.5,rowH*.012);
+    const bx1=clamp(rx1+localL+inset,rx1,rx2-1), bx2=clamp(rx1+localR-inset,bx1+1,rx2);
+    const ink=scanInkBox(canvas,bx1,hardTop,bx2,hardBottom,.001,.001);
+    if(!ink)continue;
+    const px=Math.max(1.5,rowH*.045), py=Math.max(1.5,rowH*.05);
+    const x1=Math.max(bx1,ink.x1-px), x2=Math.min(bx2,ink.x2+px);
+    const y1=Math.max(hardTop,ink.y1-py), y2=Math.min(hardBottom,ink.y2+py);
+    // Multi-letter words must span a plausible fraction of their own ink territory. If not, the
+    // raster scan probably caught one glyph fragment, so use the complete token territory's ink span.
+    const cleanLen=(tokens[i].word.match(/[\p{L}\p{N}]/gu)||[]).length;
+    if(cleanLen>1 && (x2-x1)<Math.min(rowH*.45,(bx2-bx1)*.28)){
+      out.push({word:tokens[i].word,x1:bx1,y1,x2:bx2,y2});
+    }else{
+      out.push({word:tokens[i].word,x1,y1,x2,y2});
+    }
+  }
+  return out;
+}
+function setWordBox(i){
+  wordIndex=Math.max(0,i|0);
+  const pane=el.focusFrame.querySelector('.focusPane:last-child');
+  if(!pane)return;
+  const box=pane.querySelector('.wordBox');
+  const canvas=pane.querySelector('canvas');
+  if(!box||!canvas||!wordBoxes.length||!outlineOn){ if(box)box.classList.remove('on'); return; }
+  wordIndex=clamp(wordIndex,0,wordBoxes.length-1);
+  const b=wordBoxes[wordIndex];
+  const sx=parseFloat(canvas.dataset.cropX||'0'), sy=parseFloat(canvas.dataset.cropY||'0');
+  const sw=parseFloat(canvas.dataset.cropW||canvas.width), sh=parseFloat(canvas.dataset.cropH||canvas.height);
+  const rect=canvas.getBoundingClientRect(), host=canvas.parentElement.getBoundingClientRect();
+  const scaleX=rect.width/sw, scaleY=rect.height/sh;
+  const pad=Math.max(1,rect.height*.012);
+  box.style.left=(rect.left-host.left+(b.x1-sx)*scaleX-pad)+'px';
+  box.style.top=(rect.top-host.top+(b.y1-sy)*scaleY-pad)+'px';
+  box.style.width=Math.max(4,(b.x2-b.x1)*scaleX+pad*2)+'px';
+  box.style.height=Math.max(8,(b.y2-b.y1)*scaleY+pad*2)+'px';
+  box.classList.add('on');
+  // Phone Focus mode is a moving reading window. The full line stays large behind a clipped viewport;
+  // the active word is kept around 38% from the left edge so more upcoming text remains visible.
+  if(isPhoneUI()){
+    requestAnimationFrame(()=>{
+      const frame=el.focusFrame, br=box.getBoundingClientRect(), fr=frame.getBoundingClientRect();
+      const lead=fr.left + fr.width*.38;
+      const target=frame.scrollLeft + (br.left + br.width/2) - lead;
+      const maxLeft=Math.max(0,frame.scrollWidth-frame.clientWidth);
+      frame.scrollTo({left:clamp(target,0,maxLeft),behavior:autoOn?'smooth':'auto'});
+    });
+  }
+}
+function scheduleAuto(){
+  clearAutoTimer(); if(!autoOn||!focus||!pageState)return;
+  const us=units(), u=us[unitIndex]; if(!u)return;
+  if(u.type!=='text'){
+    autoTimer=setTimeout(async()=>{if(autoOn)await step(1,true);},1800); return;
+  }
+  if(!wordBoxes.length) wordBoxes=itemWordBoxes(u);
+  if(!wordBoxes.length){ autoTimer=setTimeout(async()=>{if(autoOn)await step(1,true);},500); return; }
+  setWordBox(wordIndex);
+  const current=wordBoxes[wordIndex]?.word||'';
+  autoTimer=setTimeout(async()=>{
+    if(!autoOn)return;
+    if(wordIndex<wordBoxes.length-1){wordIndex++;setWordBox(wordIndex);scheduleAuto();}
+    else{wordIndex=0;await step(1,true);}
+  },readingDelay(current));
+}
+function resetWordFollower(){
+  clearAutoTimer(); wordIndex=0; const us=units(),u=us[unitIndex]; wordBoxes=u&&u.type==='text'?itemWordBoxes(u):[];
+  requestAnimationFrame(()=>{setWordBox(0); if(autoOn)scheduleAuto();});
+}
+
+function endsThought(unit){
+  if(!unit || unit.type!=='text') return true;
+  const t=(unit.text||'').trim();
+  // A printed line break is not a thought break. Treat only strong sentence punctuation as a boundary.
+  return /[.!?][\"'”’\)\]]*$/.test(t);
+}
+function canFlowBridge(prev,next){
+  return !!(flowOn && prev && next && prev.type==='text' && next.type==='text' && !endsThought(prev));
+}
+
+function makeCrop(unit,ghost=false){
+  const src=pageState.canvas;
+  let padX=unit.type==='text'?Math.max(8,src.width*.01):0, padY=unit.type==='text'?(el.unitMode.value==='line'?0:Math.max(5,src.height*.0045)):0;
+  let sx=clamp(Math.floor(unit.x1-padX),0,src.width-1), sy=clamp(Math.floor(unit.y1-padY),0,src.height-1);
+  let ex=clamp(Math.ceil(unit.x2+padX),sx+1,src.width), ey=clamp(Math.ceil(unit.y2+padY),sy+1,src.height);
+  let sw=ex-sx, sh=ey-sy;
+  if(unit.type==='text' && el.unitMode.value==='line'){
+    // Tight vertical isolation, but never trust raster bounds alone for left/right edges.
+    // Use the UNION of PDF text metrics and detected ink, with generous glyph padding.
+    const metricX1=sx, metricX2=ex;
+    const localInk=scanInkBox(src,sx,sy,ex,ey,.0008,.0008);
+    if(localInk){
+      const vPad=Math.max(4,Math.round((localInk.y2-localInk.y1)*.22));
+      sy=Math.max(0,localInk.y1-vPad); ey=Math.min(src.height,localInk.y2+vPad);
+    }
+    const fullLineInk=scanInkBox(src,0,sy,src.width,ey,.00012,.004);
+    const glyphH=Math.max(10, (fullLineInk ? fullLineInk.y2-fullLineInk.y1 : ey-sy));
+    const xPad=Math.max(34,Math.round(glyphH*1.35));
+    if(fullLineInk){
+      sx=Math.max(0,Math.min(metricX1,fullLineInk.x1)-xPad);
+      ex=Math.min(src.width,Math.max(metricX2,fullLineInk.x2)+xPad);
+    }else{
+      sx=Math.max(0,metricX1-xPad);
+      ex=Math.min(src.width,metricX2+xPad);
+    }
+    sw=ex-sx; sh=ey-sy;
+  }
+  // Preserve the entire detected line, then add breathing room rather than cropping to a fixed width.
+  if(unit.type==='text' && el.unitMode.value!=='line'){
+    const baseMin=src.width*.48;
+    const target=Math.min(src.width,Math.max(sw,baseMin));
+    const mid=(sx+ex)/2;
+    sx=clamp(Math.round(mid-target/2),0,Math.max(0,src.width-target));
+    sw=Math.min(src.width-sx,Math.round(target));
+  }
+  const c=document.createElement('canvas'); c.width=sw;c.height=sh; c.dataset.cropX=sx;c.dataset.cropY=sy;c.dataset.cropW=sw;c.dataset.cropH=sh; const cx=c.getContext('2d',{alpha:false});cx.imageSmoothingEnabled=true;cx.imageSmoothingQuality='high';cx.fillStyle='white';cx.fillRect(0,0,sw,sh);cx.drawImage(src,sx,sy,sw,sh,0,0,sw,sh);
+  const card=document.createElement('div'); card.className='cropCard '+(unit.type==='text'?'textUnit':'visualUnit')+(ghost?' flowGhost':'');
+  if(unit.type==='text') card.classList.add(el.unitMode.value==='line'?'lineMode':'paragraphMode');
+  const inner=document.createElement('div'); inner.className='cropInner'; inner.appendChild(c); const ov=document.createElement('div');ov.className='wordOverlay';const wb=document.createElement('div');wb.className='wordBox';ov.appendChild(wb);inner.appendChild(ov);card.appendChild(inner);
+  const tag=document.createElement('div');tag.className='unitTag';tag.textContent=unit.type==='text'?(el.unitMode.value==='line'?'line':'paragraph'):'visual';card.appendChild(tag);
+  return card;
+}
+
+function renderFocus(animate=true){
+  if(!pageState||!focus)return; const us=units(); if(!us.length)return;
+  unitIndex=clamp(unitIndex,0,us.length-1); const unit=us[unitIndex];
+  const pane=document.createElement('div');
+  const bridge=canFlowBridge(flowCarry,unit);
+  pane.className='focusPane '+(bridge?'flowTransition':(direction>=0?'enterDown':'enterUp'));
+  const stack=document.createElement('div');stack.className='flowStack';
+  if(bridge) stack.appendChild(makeCrop(flowCarry,true));
+  stack.appendChild(makeCrop(unit,false));
+  pane.appendChild(stack);
+  if(!animate) pane.className='focusPane';
+  const olds=[...el.focusFrame.querySelectorAll('.focusPane')];
+  el.focusFrame.appendChild(pane);
+  if(isPhoneUI()) el.focusFrame.scrollLeft=0;
+  wordBoxes=unit.type==='text'?itemWordBoxes(unit):[]; wordIndex=0; requestAnimationFrame(()=>setWordBox(0));
+  if(animate) olds.forEach(o=>{
+    o.classList.remove('enterDown','enterUp','flowTransition');
+    o.classList.add(bridge?'exitUp':(direction>=0?'exitUp':'exitDown'));
+    setTimeout(()=>o.remove(),280);
+  }); else olds.forEach(o=>o.remove());
+  flowCarry=null;
+}
+
+function updateUI(){
+  if(!pdfDoc||!pageState)return; const us=units(); const u=us[unitIndex];
+  el.bookMarker.style.top=pct(pageNum-1,pdfDoc.numPages)+'%'; el.lineMarker.style.top=pct(unitIndex,us.length)+'%';
+  el.focusBtn.textContent='Focus: '+(focus?'ON':'OFF'); el.focusBtn.classList.toggle('active',focus); el.focusBtn.classList.toggle('primary',!focus);
+  el.outlineBtn.textContent='Outliner: '+(outlineOn?'ON':'OFF');el.outlineBtn.classList.toggle('active',outlineOn);
+  el.autoBtn.textContent='Auto: '+(autoOn?'ON':'OFF');el.autoBtn.classList.toggle('active',autoOn);
+  el.flowBtn.textContent='Flow: '+(flowOn?'ON':'OFF');el.flowBtn.classList.toggle('active',flowOn);
+  el.normalWrap.style.display=focus?'none':'flex'; el.focusWrap.classList.toggle('on',focus);
+  const kind=u?(u.type==='text'?(el.unitMode.value==='line'?'line':'paragraph'):'visual'):'unit';
+  el.readout.innerHTML='<b>Page '+pageNum+' / '+pdfDoc.numPages+'</b> · '+(unitIndex+1)+' / '+Math.max(1,us.length)+' '+kind+(u&&u.type==='text'?' · <span style="color:#c91e2f">current line</span>':'');
+  el.prevBtn.disabled=pageNum===1&&unitIndex===0; el.nextBtn.disabled=pageNum===pdfDoc.numPages&&unitIndex>=us.length-1;
+  if(mob.prev){
+    mob.prev.disabled=el.prevBtn.disabled; mob.next.disabled=el.nextBtn.disabled;
+    mob.auto.classList.toggle('active',autoOn); mob.auto.querySelector('.mi').textContent=autoOn?'Ⅱ':'▶';
+    mob.focus.classList.toggle('active',focus); mob.focus.classList.toggle('primary',!focus);
+  }
+}
+
+async function step(delta,fromAuto=false){
+  if(!pdfDoc)return; direction=delta>=0?1:-1;
+  if(!focus){ await loadPage(pageNum+direction,true); return; }
+  const us=units();
+  if(delta>0){
+    if(unitIndex<us.length-1){
+      const prev=us[unitIndex], next=us[unitIndex+1];
+      flowCarry=canFlowBridge(prev,next)?prev:null;
+      unitIndex++;renderFocus(true);updateUI();resetWordFollower();
+    }
+    else if(pageNum<pdfDoc.numPages){flowCarry=null;unitIndex=0;await loadPage(pageNum+1,true);resetWordFollower();}
+  }else{
+    flowCarry=null;
+    if(unitIndex>0){unitIndex--;renderFocus(true);updateUI();resetWordFollower();}
+    else if(pageNum>1){direction=-1;await loadPage(pageNum-1,true); unitIndex=Math.max(0,units().length-1);renderFocus(false);updateUI();resetWordFollower();}
+  }
+}
+
+function toggleFocus(){focus=!focus; clearAutoTimer(); if(focus){renderFocus(false);resetWordFollower();} updateUI();}
+
+el.fileInput.addEventListener('change',async e=>{ const f=e.target.files&&e.target.files[0];if(!f)return; try{await loadPdf(new Uint8Array(await f.arrayBuffer()),f.name);setMobileSheet(false);}catch(err){showError(String(err.message||err));} });
+el.focusBtn.addEventListener('click',()=>{toggleFocus();safeStore('fr.focus',focus?1:0);});
+el.outlineBtn.addEventListener('click',()=>{outlineOn=!outlineOn;safeStore('fr.outline',outlineOn?1:0);updateUI();setWordBox(wordIndex);});
+el.autoBtn.addEventListener('click',()=>{autoOn=!autoOn;if(autoOn){outlineOn=true;if(!focus){focus=true;renderFocus(false);}resetWordFollower();}else clearAutoTimer();safeStore('fr.auto',autoOn?1:0);safeStore('fr.outline',outlineOn?1:0);safeStore('fr.focus',focus?1:0);updateUI();updateWakeLock();});
+el.flowBtn.addEventListener('click',()=>{flowOn=!flowOn;flowCarry=null;safeStore('fr.flow',flowOn?1:0);updateUI();});
+el.speedInput.addEventListener('change',()=>{el.speedInput.value=clamp(parseInt(el.speedInput.value||'250'),60,1200);safeStore('fr.wpm',el.speedInput.value);if(autoOn)scheduleAuto();});
+el.prevBtn.addEventListener('click',()=>step(-1)); el.nextBtn.addEventListener('click',()=>step(1));
+el.pageInput.addEventListener('change',()=>{direction=1;loadPage(parseInt(el.pageInput.value||'1'),true)});
+el.zoomSelect.addEventListener('change',()=>{safeStore('fr.zoom',el.zoomSelect.value);cache.clear();loadPage(pageNum,false)});
+el.lineSizeSelect?.addEventListener('change',()=>{safeStore('fr.windowScaleV2',el.lineSizeSelect.value);applyPhoneLineSize();if(focus)renderFocus(false);});
+el.unitMode.addEventListener('change',()=>{safeStore('fr.unit',el.unitMode.value);unitIndex=0; clearAutoTimer(); if(focus)renderFocus(false);updateUI();resetWordFollower();});
+
+// Phone shell: all buttons call the original reader controls, so there is only one source of truth.
+mob.open?.addEventListener('click',()=>el.fileInput.click());
+mob.controls?.addEventListener('click',()=>setMobileSheet(!document.querySelector('.toolbar')?.classList.contains('mobileOpen')));
+mob.scrim?.addEventListener('click',()=>setMobileSheet(false));
+mob.close?.addEventListener('click',()=>setMobileSheet(false));
+mob.prev?.addEventListener('click',()=>step(-1));
+mob.next?.addEventListener('click',()=>step(1));
+mob.auto?.addEventListener('click',()=>el.autoBtn.click());
+mob.focus?.addEventListener('click',()=>el.focusBtn.click());
+window.addEventListener('resize',()=>{if(!isPhoneUI())setMobileSheet(false);},{passive:true});
+
+// Restore durable reader preferences. Fail silently in restricted/local WebViews.
+{
+  const w=safeRead('fr.wpm'), z=safeRead('fr.zoom'), u=safeRead('fr.unit'), ls=safeRead('fr.windowScaleV2');
+  if(w) el.speedInput.value=clamp(parseInt(w||'250'),60,1200);
+  if(z && [...el.zoomSelect.options].some(o=>o.value===z)) el.zoomSelect.value=z;
+  if(ls && [...el.lineSizeSelect.options].some(o=>o.value===ls)) el.lineSizeSelect.value=ls;
+  if(u==='line'||u==='paragraph') el.unitMode.value=u;
+  applyPhoneLineSize();
+  outlineOn=safeRead('fr.outline')==='1'; flowOn=safeRead('fr.flow')==='1';
+  focus=safeRead('fr.focus')==='1'; autoOn=false; // never auto-start on launch
+}
+
+// Phone reading-window gestures: left/right moves through the enlarged current line;
+// up/down changes the reading line. This keeps manual reading fully usable even with Auto off.
+let touchStart=null;
+el.focusWrap.addEventListener('touchstart',e=>{
+  if(!focus||e.touches.length!==1)return; const t=e.touches[0]; touchStart={x:t.clientX,y:t.clientY,time:Date.now()};
+},{passive:true});
+el.focusWrap.addEventListener('touchend',e=>{
+  if(!touchStart||!focus)return; const t=e.changedTouches&&e.changedTouches[0]; if(!t){touchStart=null;return;}
+  const dx=t.clientX-touchStart.x, dy=t.clientY-touchStart.y, dt=Date.now()-touchStart.time; touchStart=null;
+  if(dt>1000)return;
+  if(Math.abs(dx)>=44 && Math.abs(dx)>Math.abs(dy)*1.12){
+    const frame=el.focusFrame, amount=frame.clientWidth*.72, maxLeft=Math.max(0,frame.scrollWidth-frame.clientWidth);
+    const target=clamp(frame.scrollLeft+(dx<0?amount:-amount),0,maxLeft);
+    frame.scrollTo({left:target,behavior:'smooth'});
+    return;
+  }
+  if(Math.abs(dy)>=52 && Math.abs(dy)>Math.abs(dx)*1.12) step(dy<0?1:-1);
+},{passive:true});
+
+// Keep the display awake during Auto when the browser allows the Screen Wake Lock API.
+let wakeLock=null;
+async function updateWakeLock(){
+  try{
+    if(autoOn && document.visibilityState==='visible' && navigator.wakeLock?.request){
+      if(!wakeLock){wakeLock=await navigator.wakeLock.request('screen');wakeLock.addEventListener?.('release',()=>{wakeLock=null;});}
+    }else if(wakeLock){await wakeLock.release();wakeLock=null;}
+  }catch(_){wakeLock=null;}
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')updateWakeLock();else if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null;}});
+window.matchMedia?.('(max-width:720px)').addEventListener?.('change',()=>setMobileSheet(false));
+window.addEventListener('keydown',e=>{
+  if(e.target && /INPUT|SELECT/.test(e.target.tagName)) return;
+  if(e.key==='ArrowDown'||e.key==='PageDown'||e.key===' '){e.preventDefault();step(1);} 
+  else if(e.key==='ArrowUp'||e.key==='PageUp'){e.preventDefault();step(-1);} 
+  else if(e.key.toLowerCase()==='f'){e.preventDefault();toggleFocus();}
+  else if(e.key.toLowerCase()==='a'){e.preventDefault();el.autoBtn.click();}
+  else if(e.key.toLowerCase()==='o'){e.preventDefault();el.outlineBtn.click();}
+  else if(e.key.toLowerCase()==='g'){e.preventDefault();el.flowBtn.click();}
+  else if(e.key==='Home'&&focus){e.preventDefault();direction=-1;unitIndex=0;renderFocus(true);updateUI();}
+  else if(e.key==='End'&&focus){e.preventDefault();direction=1;unitIndex=Math.max(0,units().length-1);renderFocus(true);updateUI();}
+});
+// Mouse wheel in focus mode acts exactly like one reading step at a time, with debounce.
+let wheelLock=false;el.focusWrap.addEventListener('wheel',e=>{if(!focus)return;e.preventDefault();if(wheelLock)return;wheelLock=true;step(e.deltaY>=0?1:-1);setTimeout(()=>wheelLock=false,210);},{passive:false});
+window.addEventListener('resize',()=>{if(focus&&outlineOn)setWordBox(wordIndex);if(!isPhoneUI())setMobileSheet(false);});
+
+(async function init(){
+  try{
+    if(!window.pdfjsLib) throw new Error('PDF.js could not be loaded. Check your internet connection, reload the reader, then choose your PDF.');
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    el.loading.classList.remove('hidden');
+    el.loading.textContent='Choose a PDF to start reading';
+    status('Ready · choose a PDF');
+    // On phones, immediately offer the native Files picker. If iOS blocks an automatic
+    // picker because it was not triggered by a tap, the large Open PDF button remains available.
+    if(isPhoneUI()) setTimeout(()=>{ try{ el.fileInput.click(); }catch(_){ } },120);
+  }catch(err){console.error(err);showError(String(err.message||err));}
+})();
+})();
+</script>
+
+</body>
+</html>
