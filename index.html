@@ -121,11 +121,19 @@
     main{min-height:0}
     .normalWrap{padding:14px 12px calc(112px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
     #normalCanvas{max-width:100%;box-shadow:none}
-    .focusWrap{padding:8px 33px calc(116px + env(safe-area-inset-bottom)) 10px;touch-action:pan-x;overscroll-behavior:none}
-    .focusFrame{height:100%;border-radius:10px}
-    .focusPane{max-height:96%}
+    .focusWrap{padding:8px 33px calc(116px + env(safe-area-inset-bottom)) 10px;touch-action:pan-y;overscroll-behavior:none}
+    /* Moving reading window: the line is much larger than the screen, but the frame clips it.
+       JavaScript moves the hidden horizontal viewport to follow the active word. */
+    .focusFrame{height:100%;border-radius:14px;overflow-x:hidden;overflow-y:hidden;scroll-behavior:smooth;box-shadow:inset 0 0 0 1px rgba(255,255,255,.035)}
+    .focusFrame::before,.focusFrame::after{content:"";position:absolute;top:0;bottom:0;width:34px;z-index:20;pointer-events:none}
+    .focusFrame::before{left:0;background:linear-gradient(90deg,#000 8%,rgba(0,0,0,.72) 42%,transparent)}
+    .focusFrame::after{right:0;background:linear-gradient(270deg,#000 8%,rgba(0,0,0,.72) 42%,transparent)}
+    .focusPane{max-height:96%;justify-content:flex-start;overflow:visible}
     .cropCard canvas{max-height:66dvh}
-    .cropCard.textUnit.lineMode,.cropCard.textUnit.paragraphMode{width:100%}
+    .cropCard.textUnit.lineMode{width:var(--phone-line-width,420%);max-width:none;flex:0 0 auto}
+    .cropCard.textUnit.lineMode .cropInner{width:100%;max-width:none}
+    .cropCard.textUnit.lineMode canvas{width:100%;max-width:none;height:auto}
+    .cropCard.textUnit.paragraphMode{width:100%;max-width:100%}
     .cropCard.visualUnit .cropInner,.cropCard.visualUnit canvas{max-width:92vw;max-height:62dvh}
     .unitTag{left:auto;right:4px;top:-30px;margin-left:0;font-size:9px;padding:5px 7px}
     .flowStack{gap:8px}
@@ -179,6 +187,7 @@
     <button id="nextBtn" title="Next line / unit (Down Arrow)">Next ↓</button>
     <div class="group"><label>Page</label><input id="pageInput" type="number" min="1" value="1"><span id="pageTotal">/ -</span></div>
     <div class="group"><label>Zoom</label><select id="zoomSelect"><option value="1.25">125%</option><option value="1.5" selected>150%</option><option value="1.75">175%</option><option value="2">200%</option></select></div>
+    <div class="group"><label>Reading Size</label><select id="lineSizeSelect" title="Size of the moving reading window text on phones"><option value="300">300%</option><option value="360">360%</option><option value="420" selected>420%</option><option value="480">480%</option><option value="550">550%</option><option value="650">650%</option></select></div>
   </div>
   <div id="status" class="status">Choose a PDF to begin</div>
 </header>
@@ -214,7 +223,7 @@ const RENDER_QUALITY = Math.max(3, Math.min(3.5, (window.devicePixelRatio || 1) 
 const $ = id => document.getElementById(id);
 const el = {
   fileInput:$('fileInput'), focusBtn:$('focusBtn'), unitMode:$('unitMode'), speedInput:$('speedInput'), outlineBtn:$('outlineBtn'), autoBtn:$('autoBtn'), flowBtn:$('flowBtn'), prevBtn:$('prevBtn'), nextBtn:$('nextBtn'),
-  pageInput:$('pageInput'), pageTotal:$('pageTotal'), zoomSelect:$('zoomSelect'), status:$('status'), normalWrap:$('normalWrap'),
+  pageInput:$('pageInput'), pageTotal:$('pageTotal'), zoomSelect:$('zoomSelect'), lineSizeSelect:$('lineSizeSelect'), status:$('status'), normalWrap:$('normalWrap'),
   normalCanvas:$('normalCanvas'), focusWrap:$('focusWrap'), focusFrame:$('focusFrame'), bookMarker:$('bookMarker'), lineMarker:$('lineMarker'),
   readout:$('readout'), loading:$('loading'), error:$('error'), errorText:$('errorText')
 };
@@ -231,6 +240,10 @@ function setMobileSheet(on){
 }
 function safeStore(k,v){try{localStorage.setItem(k,String(v));}catch(_){}}
 function safeRead(k){try{return localStorage.getItem(k);}catch(_){return null;}}
+function applyPhoneLineSize(){
+  const n=clamp(parseInt(el.lineSizeSelect?.value||'420'),250,700);
+  document.documentElement.style.setProperty('--phone-line-width',n+'%');
+}
 
 let pdfDoc=null, pageNum=1, focus=false, unitIndex=0, pageState=null, direction=1, renderToken=0, currentName=BASELINE_NAME;
 let outlineOn=false, autoOn=false, wordIndex=0, autoTimer=null, wordBoxes=[];
@@ -629,6 +642,17 @@ function setWordBox(i){
   box.style.width=Math.max(4,(b.x2-b.x1)*scaleX+pad*2)+'px';
   box.style.height=Math.max(8,(b.y2-b.y1)*scaleY+pad*2)+'px';
   box.classList.add('on');
+  // Phone Focus mode is a moving reading window. The full line stays large behind a clipped viewport;
+  // the active word is kept around 38% from the left edge so more upcoming text remains visible.
+  if(isPhoneUI()){
+    requestAnimationFrame(()=>{
+      const frame=el.focusFrame, br=box.getBoundingClientRect(), fr=frame.getBoundingClientRect();
+      const lead=fr.left + fr.width*.38;
+      const target=frame.scrollLeft + (br.left + br.width/2) - lead;
+      const maxLeft=Math.max(0,frame.scrollWidth-frame.clientWidth);
+      frame.scrollTo({left:clamp(target,0,maxLeft),behavior:autoOn?'smooth':'auto'});
+    });
+  }
 }
 function scheduleAuto(){
   clearAutoTimer(); if(!autoOn||!focus||!pageState)return;
@@ -717,6 +741,7 @@ function renderFocus(animate=true){
   if(!animate) pane.className='focusPane';
   const olds=[...el.focusFrame.querySelectorAll('.focusPane')];
   el.focusFrame.appendChild(pane);
+  if(isPhoneUI()) el.focusFrame.scrollLeft=0;
   wordBoxes=unit.type==='text'?itemWordBoxes(unit):[]; wordIndex=0; requestAnimationFrame(()=>setWordBox(0));
   if(animate) olds.forEach(o=>{
     o.classList.remove('enterDown','enterUp','flowTransition');
@@ -773,6 +798,7 @@ el.speedInput.addEventListener('change',()=>{el.speedInput.value=clamp(parseInt(
 el.prevBtn.addEventListener('click',()=>step(-1)); el.nextBtn.addEventListener('click',()=>step(1));
 el.pageInput.addEventListener('change',()=>{direction=1;loadPage(parseInt(el.pageInput.value||'1'),true)});
 el.zoomSelect.addEventListener('change',()=>{safeStore('fr.zoom',el.zoomSelect.value);cache.clear();loadPage(pageNum,false)});
+el.lineSizeSelect?.addEventListener('change',()=>{safeStore('fr.windowScaleV2',el.lineSizeSelect.value);applyPhoneLineSize();if(focus)renderFocus(false);});
 el.unitMode.addEventListener('change',()=>{safeStore('fr.unit',el.unitMode.value);unitIndex=0; clearAutoTimer(); if(focus)renderFocus(false);updateUI();resetWordFollower();});
 
 // Phone shell: all buttons call the original reader controls, so there is only one source of truth.
@@ -786,15 +812,18 @@ mob.focus?.addEventListener('click',()=>el.focusBtn.click());
 
 // Restore durable reader preferences. Fail silently in restricted/local WebViews.
 {
-  const w=safeRead('fr.wpm'), z=safeRead('fr.zoom'), u=safeRead('fr.unit');
+  const w=safeRead('fr.wpm'), z=safeRead('fr.zoom'), u=safeRead('fr.unit'), ls=safeRead('fr.windowScaleV2');
   if(w) el.speedInput.value=clamp(parseInt(w||'250'),60,1200);
   if(z && [...el.zoomSelect.options].some(o=>o.value===z)) el.zoomSelect.value=z;
+  if(ls && [...el.lineSizeSelect.options].some(o=>o.value===ls)) el.lineSizeSelect.value=ls;
   if(u==='line'||u==='paragraph') el.unitMode.value=u;
+  applyPhoneLineSize();
   outlineOn=safeRead('fr.outline')==='1'; flowOn=safeRead('fr.flow')==='1';
   focus=safeRead('fr.focus')==='1'; autoOn=false; // never auto-start on launch
 }
 
-// Swipe vertically through lines in Focus mode. A horizontal motion is ignored.
+// Phone reading-window gestures: left/right moves through the enlarged current line;
+// up/down changes the reading line. This keeps manual reading fully usable even with Auto off.
 let touchStart=null;
 el.focusWrap.addEventListener('touchstart',e=>{
   if(!focus||e.touches.length!==1)return; const t=e.touches[0]; touchStart={x:t.clientX,y:t.clientY,time:Date.now()};
@@ -802,8 +831,14 @@ el.focusWrap.addEventListener('touchstart',e=>{
 el.focusWrap.addEventListener('touchend',e=>{
   if(!touchStart||!focus)return; const t=e.changedTouches&&e.changedTouches[0]; if(!t){touchStart=null;return;}
   const dx=t.clientX-touchStart.x, dy=t.clientY-touchStart.y, dt=Date.now()-touchStart.time; touchStart=null;
-  if(dt>900||Math.abs(dy)<52||Math.abs(dy)<Math.abs(dx)*1.15)return;
-  step(dy<0?1:-1);
+  if(dt>1000)return;
+  if(Math.abs(dx)>=44 && Math.abs(dx)>Math.abs(dy)*1.12){
+    const frame=el.focusFrame, amount=frame.clientWidth*.72, maxLeft=Math.max(0,frame.scrollWidth-frame.clientWidth);
+    const target=clamp(frame.scrollLeft+(dx<0?amount:-amount),0,maxLeft);
+    frame.scrollTo({left:target,behavior:'smooth'});
+    return;
+  }
+  if(Math.abs(dy)>=52 && Math.abs(dy)>Math.abs(dx)*1.12) step(dy<0?1:-1);
 },{passive:true});
 
 // Keep the display awake during Auto when the browser allows the Screen Wake Lock API.
